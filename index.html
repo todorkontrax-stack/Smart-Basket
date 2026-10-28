@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="bg"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Умна пазарска кошница</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--tx:#1d1d1b;--mu:#6b6a64;--ac:#1f7a4d;--bd:#e2e0d8;--hi:#c0392b;--md:#c98a0b;--lo:#2f6fb0;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171715;--card:#222220;--tx:#f0efe9;--mu:#a3a198;--ac:#4cc38a;--bd:#38372f;--hi:#ff7b6b;--md:#e8b04a;--lo:#6fa8e8;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px}h1{font-size:22px;margin:4px 0 4px}h2{font-size:17px;margin:18px 0 8px}
+nav{display:flex;gap:6px;margin:12px 0}nav button{flex:1;padding:10px 6px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font-size:14px;cursor:pointer}nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,select{padding:9px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:15px;min-width:0}input.n{width:80px}select{max-width:100%}
+.btn{padding:9px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-size:15px;cursor:pointer}.x{background:none;border:0;color:var(--mu);cursor:pointer;font-size:18px}
+.mu{color:var(--mu);font-size:13px}.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid currentColor}.p3{color:var(--hi)}.p2{color:var(--md)}.p1{color:var(--lo)}
+.best{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}.promo{color:var(--hi);font-size:12px}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%}td,th{padding:6px;text-align:left;border-bottom:1px solid var(--bd);font-size:14px}
+</style></head><body><main>
+<h1>🛒 Умна пазарска кошница</h1><div class="mu" id="info">Зареждане на цените…</div>
+<nav id="nav"></nav><div id="v"></div></main>
+<script>
+var D=null,OK={},PK={},S={stores:[],items:[],last:{},alerts:[],draft:[]},tab='r',PN={3:'Висок',2:'Среден',1:'Нисък'};
+try{var r0=localStorage.getItem('pk2');if(r0)S=JSON.parse(r0)}catch(e){}
+function save(){try{localStorage.setItem('pk2',JSON.stringify(S))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function eur(n){return n.toFixed(2).replace('.',',')+' €'}
+function go(t){tab=t;draw()}
+fetch('prices.json').then(function(r){return r.json()}).then(function(d){D=d;
+  d.outlets.forEach(function(o,i){OK[o.chain+'|'+o.addr]=i});d.products.forEach(function(p,j){PK[p[0]+'|'+p[1]]=j});
+  document.getElementById('info').textContent='Цени към '+d.date.split('-').reverse().join('.')+' · данни: КЗП, kolkostruva.bg';draw()
+}).catch(function(){document.getElementById('info').textContent='Не успях да заредя prices.json. Отвори приложението през адреса от GitHub Pages.'});
+function chains(){var c={};D.outlets.forEach(function(o){c[o.chain]=1});return Object.keys(c).sort()}
+function fillAddr(){var c=document.getElementById('sc').value,q=document.getElementById('sq').value.toLowerCase(),h='';
+  D.outlets.forEach(function(o){if(o.chain==c&&o.addr.toLowerCase().indexOf(q)>=0)h+='<option value="'+esc(o.chain+'|'+o.addr)+'">'+esc(o.addr)+'</option>'});
+  document.getElementById('sa').innerHTML=h||'<option value="">няма съвпадения</option>'}
+function addStore(){var k=document.getElementById('sa').value;if(!k||S.stores.some(function(s){return s.k==k}))return;
+  S.stores.push({k:k,d:parseFloat(document.getElementById('sd').value)||0});save();draw()}
+function delStore(i){S.stores.splice(i,1);save();draw()}
+function search(){var q=document.getElementById('pq').value.toLowerCase().split(/\s+/).filter(Boolean),el=document.getElementById('res'),ch={};
+  S.stores.forEach(function(s){ch[s.k.split('|')[0]]=1});
+  if(q.join('').length<3){el.innerHTML='';return}
+  var out=[];for(var j=0;j<D.products.length&&out.length<40;j++){var p=D.products[j],n=p[2].toLowerCase();
+    if(ch[p[0]]&&q.every(function(w){return n.indexOf(w)>=0}))out.push(j)}
+  el.innerHTML=out.map(function(j){var p=D.products[j],k=p[0]+'|'+p[1];
+    return '<label class="row" style="padding:3px 0"><input type="checkbox" '+(S.draft.indexOf(k)>=0?'checked':'')+' onchange="tick(\''+esc(k)+'\',this.checked)"> <span>'+esc(p[2])+' <span class="mu">· '+esc(p[0])+'</span></span></label>'}).join('')||'<span class="mu">Няма съвпадения във веригите от избраните магазини.</span>'}
+function tick(k,on){var i=S.draft.indexOf(k);if(on&&i<0)S.draft.push(k);if(!on&&i>=0)S.draft.splice(i,1);save();document.getElementById('dc').textContent=S.draft.length}
+function addItem(){var n=document.getElementById('pn').value.trim();if(!n||!S.draft.length)return alert('Въведи име и отбележи поне един артикул от търсенето.');
+  S.items.push({id:Math.random().toString(36).slice(2,8),name:n,prio:+document.getElementById('pp').value,qty:Math.max(1,parseInt(document.getElementById('pc').value)||1),sel:true,links:S.draft.slice()});S.draft=[];save();draw()}
+function delItem(i){S.items.splice(i,1);save();draw()}
+function setPrio(i,v){S.items[i].prio=+v;save();draw()}function setSel(i,v){S.items[i].sel=v;save();draw()}
+function priceAt(item,s){var oi=OK[s.k],ch=s.k.split('|')[0],best=null;if(oi==null)return null;
+  item.links.forEach(function(k){if(k.split('|')[0]!=ch)return;var j=PK[k],pr=D.prices[oi]&&D.prices[oi][j];if(!pr)return;var e=pr[1]||pr[0];if(!best||e<best.p)best={p:e,promo:!!pr[1]}});return best}
+function draw(){
+  document.getElementById('nav').innerHTML=[['r','Резултат'],['p','Продукти'],['s','Магазини']].map(function(x){return '<button class="'+(tab==x[0]?'on':'')+'" onclick="go(\''+x[0]+'\')">'+x[1]+'</button>'}).join('');
+  var v=document.getElementById('v');if(!D){v.innerHTML='';return}
+  if(tab=='s'){var h='<div class="card"><div class="row"><select id="sc" onchange="fillAddr()">'+chains().map(function(c){return '<option>'+esc(c)+'</option>'}).join('')+'</select><input id="sq" placeholder="Търси в адреса (напр. Люлин)" oninput="fillAddr()" style="flex:1"></div><div class="row" style="margin-top:8px"><select id="sa" style="flex:1"></select><input id="sd" class="n" type="number" step="0.1" min="0" placeholder="км"><button class="btn" onclick="addStore()">Добави</button></div></div>';
+    h+=S.stores.map(function(s,i){var p=s.k.split('|');return '<div class="card row"><span style="flex:1"><b>'+esc(p[0])+'</b><br><span class="mu">'+esc(p[1])+(OK[s.k]==null?' · няма данни за днес':'')+'</span></span><span class="mu">'+s.d+' км</span><button class="x" onclick="delStore('+i+')">✕</button></div>'}).join('')||'<p class="mu">Избери вериги и обекти от падащия списък. Километрите са по желание и се ползват при равни цени.</p>';
+    v.innerHTML=h;fillAddr();return}
+  if(tab=='p'){var h='<div class="card"><b>Нов продукт</b><div class="row" style="margin-top:8px"><input id="pq" placeholder="Търси (напр. верея кисело)" oninput="search()" style="flex:1"></div><div id="res" style="margin-top:8px"></div><div class="mu">Отбелязани артикули: <span id="dc">'+S.draft.length+'</span></div><div class="row" style="margin-top:8px"><input id="pn" placeholder="Как да се казва в списъка" style="flex:1"><input id="pc" class="n" type="number" min="1" value="1"><select id="pp"><option value="3">Висок</option><option value="2" selected>Среден</option><option value="1">Нисък</option></select><button class="btn" onclick="addItem()">Добави</button></div></div>';
+    h+=S.items.map(function(p,i){return '<div class="card row"><span style="flex:1"><b>'+esc(p.name)+'</b> <span class="mu">× '+p.qty+' · '+p.links.length+' арт.</span></span><select onchange="setPrio('+i+',this.value)">'+[3,2,1].map(function(k){return '<option value="'+k+'"'+(p.prio==k?' selected':'')+'>'+PN[k]+'</option>'}).join('')+'</select><button class="x" onclick="delItem('+i+')">✕</button></div>'}).join('');
+    v.innerHTML=h;return}
+  v.innerHTML=result()}
+function result(){
+  if(!S.stores.length||!S.items.length)return '<p class="mu">Започни от „Магазини“, после добави продукти. Цените се обновяват автоматично всеки ден.</p>';
+  var h='',sel=S.items.filter(function(p){return p.sel}),ps=S.items.map(function(p,i){return{p:p,i:i}}).sort(function(a,b){return b.p.prio-a.p.prio});
+  S.items.forEach(function(it){var m=Infinity;S.stores.forEach(function(s){var x=priceAt(it,s);if(x&&x.p<m)m=x.p});
+    if(m<Infinity){var o=S.last[it.id];if(o&&m<o-0.004){S.alerts.unshift('Поевтиня: „'+it.name+'“ — вече '+eur(m)+' (беше '+eur(o)+')');S.alerts=S.alerts.slice(0,6)}S.last[it.id]=m}});save();
+  if(S.alerts.length)h+='<h2>🔔 Известия</h2><div class="card">'+S.alerts.map(function(a){return '<div>• '+esc(a)+'</div>'}).join('')+'</div>';
+  h+='<h2>Избери за кошницата</h2><div class="card">'+ps.map(function(x){return '<label class="row" style="padding:3px 0"><input type="checkbox" '+(x.p.sel?'checked':'')+' onchange="setSel('+x.i+',this.checked)"> '+esc(x.p.name)+' <span class="tag p'+x.p.prio+'">'+PN[x.p.prio]+'</span></label>'}).join('')+'</div>';
+  if(!sel.length)return h;
+  var tot=S.stores.map(function(s){var t=0,m=0;sel.forEach(function(p){var x=priceAt(p,s);if(x)t+=x.p*p.qty;else m++});return{s:s,t:t,m:m}});
+  var full=tot.filter(function(x){return !x.m}).sort(function(a,b){return a.t-b.t||a.s.d-b.s.d});
+  h+='<h2>Най-изгодна кошница</h2>';
+  if(full.length){var b=full[0],q=b.s.k.split('|');h+='<div class="card best"><b>'+esc(q[0])+'</b> — общо '+eur(b.t)+'<div class="mu">'+esc(q[1])+(full.length>1&&full[1].t==b.t?' · същата цена като другаде, избран е най-близкият':'')+'</div></div>'}
+  else h+='<p class="mu">Няма избран магазин с всички продукти. Виж разделената покупка.</p>';
+  h+='<div class="card scroll"><table><tr><th>Магазин</th><th>Общо</th><th>Липсват</th></tr>'+tot.slice().sort(function(a,b){return a.m-b.m||a.t-b.t}).map(function(x){var q=x.s.k.split('|');return '<tr><td>'+esc(q[0])+' <span class="mu">'+esc(q[1].slice(0,40))+'</span></td><td>'+(x.m?'—':eur(x.t))+'</td><td>'+(x.m?x.m+' арт.':'')+'</td></tr>'}).join('')+'</table></div>';
+  var sp=0,ok=true;sel.forEach(function(p){var m=Infinity;S.stores.forEach(function(s){var x=priceAt(p,s);if(x&&x.p<m)m=x.p});if(m==Infinity)ok=false;else sp+=m*p.qty});
+  if(ok&&sel.length>1)h+='<div class="card">Ако купуваш всеки продукт от най-евтиния магазин: <b>'+eur(sp)+'</b>'+(full.length&&sp<full[0].t-0.004?' (спестяваш '+eur(full[0].t-sp)+' спрямо един магазин, но обикаляш повече)':'')+'</div>';
+  h+='<h2>По продукт (от най-евтин)</h2>';
+  ps.filter(function(x){return x.p.sel}).forEach(function(x){var l=[];S.stores.forEach(function(s){var y=priceAt(x.p,s);if(y)l.push({s:s,y:y})});l.sort(function(a,b){return a.y.p-b.y.p||a.s.d-b.s.d});
+    h+='<div class="card"><b>'+esc(x.p.name)+'</b> <span class="tag p'+x.p.prio+'">'+PN[x.p.prio]+'</span>'+(l.length?l.map(function(e,k){var q=e.s.k.split('|');return '<div class="row" style="justify-content:space-between'+(k==0?';color:var(--ac);font-weight:600':'')+'"><span>'+(k==0?'★ ':'')+esc(q[0])+' <span class="mu">'+esc(q[1].slice(0,34))+'</span></span><span>'+eur(e.y.p)+(e.y.promo?' <span class="promo">промо</span>':'')+'</span></div>'}).join(''):'<div class="mu">Няма цена в избраните магазини.</div>')+'</div>'});
+  return h}
+</script></body></html>
